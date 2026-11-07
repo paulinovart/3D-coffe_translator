@@ -1,9 +1,13 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
-// import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-// import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
-// import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
+
+
+let craftBag1,craftBag2, craftBag3;
+let craftBags = [];
 
 const scene = new THREE.Scene(); // scene : comme le viewport ds blender
 const viewport = {
@@ -71,7 +75,7 @@ CONTROLS ET HELPERS
 
 const controls = new OrbitControls(camera, renderer.domElement)
 controls.enablePan;
-controls.cursorStyle = "grab";
+//controls.cursorStyle = "grab";
 //controls.autoRotate = true;
 controls.autoRotateSpeed = true;
 controls.enableDamping = true;
@@ -81,8 +85,14 @@ controls.enableDamping = true;
 const axesHelper = new THREE.AxesHelper( 5 );
 scene.add( axesHelper );
 
-
-
+/*
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+LOADING MANAGER
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+ */
+const manager = new THREE.LoadingManager();
 
 /*
 -------------------------------------------------------------------------------------------------------------------------
@@ -106,7 +116,6 @@ window.onresize = () => {
   renderer.render(scene, camera); //il faut le mettre à chaque fois qu'il y a un nouveau parametre, comm le resize
 };
 
-
 /*
 -------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------
@@ -114,14 +123,86 @@ OBJECTS 3D
 -------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------
  */
-
-
 const planeMaterial = new THREE.MeshBasicMaterial( { color: 0x654321, side: THREE.DoubleSide } );
 const planeGeometry = new THREE.PlaneGeometry(2,2)
 
 const testPlane = new THREE.Mesh(planeGeometry, planeMaterial)
 testPlane.rotateX (Math.PI/2)
 scene.add(testPlane)
+
+/*
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+CHARGEMENT MODELES SAC CRAFT 3D
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+*/
+
+const dracoloader = new DRACOLoader(manager);
+dracoloader.setDecoderPath(
+  "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
+);
+
+
+const loader = new GLTFLoader(manager);
+loader.setDRACOLoader(dracoloader);
+//sac de café n°1
+loader.load("/models/sac_cafe_craft.glb", (gltf) => {
+  craftBag1 = gltf.scene;
+    scene.add(craftBag1); 
+    craftBags.push(craftBag1);
+    renderer.render(scene, camera);
+})
+
+//sac de café n°2
+
+loader.load("/models/sac_cafe_craft.glb", (gltf) => {
+    craftBag2 = gltf.scene;
+    scene.add(craftBag2);
+    craftBags.push(craftBag2);
+    renderer.render(scene, camera);
+    
+})
+//sac de café n°3
+loader.load("/models/sac_cafe_craft.glb", (gltf) => {
+    craftBag3 = gltf.scene;
+    craftBag3.name = 'craft-bag'
+    scene.add(craftBag3);
+    craftBags.push(craftBag3);
+    renderer.render(scene, camera);
+    
+})
+
+
+// pour regler les positions de base apres le load des modeles
+
+manager.onLoad = () => {
+    craftBag1.position.set(0,0,0);
+    craftBag2.position.set(0,0,0.3);
+    craftBag3.position.set(0,0,0.6);
+    console.log(craftBags)
+
+};
+
+
+/*
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+RAYCASTER AU HOVER
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+ */
+
+const mouse = new THREE.Vector2(10, 10);
+const raycaster = new THREE.Raycaster(undefined, undefined);
+let hovered = null;
+
+window.addEventListener("pointermove", (event) => {
+  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+});
+
 
 
 /*
@@ -134,6 +215,18 @@ ANIMATE
 
 function animate(time) {
     //rendu à chaque frame du canvas
+
+    raycaster.setFromCamera(mouse, camera)
+    const hits = raycaster.intersectObjects(craftBags)
+    hovered = hits.length > 0 ? hits[0].object : null;
+    
+    for (const craftBag of craftBags){
+
+       const targetY = craftBag.children[0] === hovered ? 0.1 : 0;
+       craftBag.position.y = THREE.MathUtils.lerp(craftBag.position.y, targetY, 0.15);
+    
+
+    }
 
     controls.update();
   
