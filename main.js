@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+import * as CANNON from "https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/+esm"
+
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
@@ -8,6 +10,9 @@ import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
 
 let craftBag1,craftBag2, craftBag3;
+let coffeBean;
+let coffeBeanBodies = [];
+let coffeBeanMeshes = [];
 let craftBags = [];
 let currentStep = 1;
 let selectedCraftBag
@@ -31,7 +36,7 @@ const camera = new THREE.PerspectiveCamera(
     0.2, // plan de clip proche (near)  ==> à quel point on voit loin ou proche dans une scene
     1000 // plan de clip loin(far)
   );
-  camera.position.set(0,0.5,2)
+  camera.position.set(2,0,0)
 
 scene.add(camera)
 
@@ -133,6 +138,10 @@ const testPlane = new THREE.Mesh(planeGeometry, planeMaterial)
 testPlane.rotateX (Math.PI/2)
 scene.add(testPlane)
 
+
+
+
+
 /*
 -------------------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------
@@ -143,7 +152,7 @@ CHARGEMENT MODELES SAC CRAFT 3D
 
 const dracoloader = new DRACOLoader(manager);
 dracoloader.setDecoderPath(
-  "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
+    "https://www.gstatic.com/draco/versioned/decoders/1.5.6/"
 );
 
 
@@ -151,7 +160,8 @@ const loader = new GLTFLoader(manager);
 loader.setDRACOLoader(dracoloader);
 //sac de café n°1
 loader.load("/models/sac_cafe_craft.glb", (gltf) => {
-  craftBag1 = gltf.scene;
+    craftBag1 = gltf.scene;
+    craftBag1.name = 'craft-bag-1';
     scene.add(craftBag1); 
     craftBags.push(craftBag1);
     renderer.render(scene, camera);
@@ -161,6 +171,7 @@ loader.load("/models/sac_cafe_craft.glb", (gltf) => {
 
 loader.load("/models/sac_cafe_craft.glb", (gltf) => {
     craftBag2 = gltf.scene;
+    craftBag2.name = 'craft-bag-2';
     scene.add(craftBag2);
     craftBags.push(craftBag2);
     renderer.render(scene, camera);
@@ -169,7 +180,7 @@ loader.load("/models/sac_cafe_craft.glb", (gltf) => {
 //sac de café n°3
 loader.load("/models/sac_cafe_craft.glb", (gltf) => {
     craftBag3 = gltf.scene;
-    craftBag3.name = 'craft-bag'
+    craftBag3.name = 'craft-bag-3';
     scene.add(craftBag3);
     craftBags.push(craftBag3);
     renderer.render(scene, camera);
@@ -184,8 +195,74 @@ manager.onLoad = () => {
     craftBag2.position.set(0,0,0.3);
     craftBag3.position.set(0,0,0.6);
     console.log(craftBags)
-
+    
 };
+/*
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+CHARGEMENT MODELES GRAIN CAFE
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+*/
+
+loader.load("/models/coffee_bean_2.glb", (gltf) => {
+coffeBean = gltf.scene;
+})
+
+window.addEventListener("keydown",()=>{
+    if (currentStep !== 2) return;
+    console.log("key pressed")
+    console.log(coffeBeanMeshes)
+    scene.add(coffeBean);
+    coffeBean.position.set(1,1,0)
+    coffeBean.scale.set(0.2,0.2,0.2)
+    coffeBeanMeshes.push(coffeBean)
+
+})
+
+
+/*
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+AJOUT DE LA PHYSIQUE AVEC CANNON-ES
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+*/
+
+const world = new CANNON.World({
+    
+    gravity:new CANNON. Vec3(0,-9.81,0)
+    
+})
+
+const groundPhysMat = new CANNON.Material()
+const groundBody = new CANNON.Body({
+    shape: new CANNON.Box(new CANNON.Vec3(10, 0.1, 10)),
+    //shape: new CANNON.Box (new CANNON.Vec3(10,10,.1)),
+    type: CANNON.Body.STATIC,
+    material:groundPhysMat
+})
+
+world.addBody(groundBody)
+//groundBody.quaternion.setFromEuler(-Math.PI/2,0,0)
+
+
+const timeStep =1/60;
+
+
+
+
+const coffeBeanPhysMat = new CANNON.Material()
+const coffeBeanBody = new CANNON.Body({
+    mass:10,
+    shape: new CANNON.Cylinder(1, 1, 1, 16),
+
+    position:new CANNON.Vec3(0,4,0),
+    material:coffeBeanPhysMat
+})
+
+world.addBody(coffeBeanBody)
+coffeBeanBodies.push(coffeBeanBody)
 
 
 /*
@@ -216,7 +293,7 @@ ETAPE 1 ==> selection
 
 window.addEventListener("click", () => {
 
-    if (currentStep !== 1) return;
+    if (currentStep !== 1) return; // ==> si l'etape n'est pas 1, arrete la fonction 
   
     raycaster.setFromCamera(mouse, camera);
   
@@ -225,6 +302,7 @@ window.addEventListener("click", () => {
       const selectedCraftBag = hits[0].object;
   
       console.log("sac selectionné :", selectedCraftBag);
+      console.log(currentStep);
   
       changeStep();
     }
@@ -272,6 +350,18 @@ ANIMATE
 
 function animate(time) {
     //rendu à chaque frame du canvas
+
+// pour la physique
+
+world.step(timeStep)
+
+    for (let i = 0; i < coffeBeanBodies.length; i++) {
+      // coffeBeanMeshes[i].position.copy(coffeBeanBodies[i].position);
+       //coffeBeanMeshes[i].quaternion.copy(coffeBeanBodies[i].quaternion);
+    }
+
+
+
 
     raycaster.setFromCamera(mouse, camera)
     const hits = raycaster.intersectObjects(craftBags)
