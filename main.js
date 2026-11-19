@@ -1,4 +1,5 @@
 import * as THREE from "three";
+
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
@@ -8,6 +9,8 @@ import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
 let craftBag1,craftBag2, craftBag3;
 let craftBags = [];
+let currentStep = 1;
+let selectedCraftBag
 
 const scene = new THREE.Scene(); // scene : comme le viewport ds blender
 const viewport = {
@@ -202,8 +205,62 @@ window.addEventListener("pointermove", (event) => {
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
 });
+/*
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+ETAPE 1 ==> selection
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+ */
 
 
+window.addEventListener("click", () => {
+
+    if (currentStep !== 1) return;
+  
+    raycaster.setFromCamera(mouse, camera);
+  
+    const hits = raycaster.intersectObjects(craftBags, true);
+    if (hits.length > 0) {
+      const selectedCraftBag = hits[0].object;
+  
+      console.log("sac selectionné :", selectedCraftBag);
+  
+      changeStep();
+    }
+  });
+
+
+
+/*
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+FONCTION CHANGEMENT ETAPES
+-------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------
+ */
+
+
+
+  function changeStep() {
+
+   currentStep += 1; 
+  
+    // switch (newStep) {
+  
+    //   case 2:
+    //     afficherFenetre();
+    //     break;
+  
+    //   case 3:
+    //     lancerAnimation();
+    //     break;
+  
+    //   case 4:
+    //     console.log("Fin du jeu !");
+    //     break;
+    // }
+  }
 
 /*
 -------------------------------------------------------------------------------------------------------------------------
